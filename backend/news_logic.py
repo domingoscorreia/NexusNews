@@ -118,3 +118,25 @@ def get_latest_news_grouped(categories, per_category=8):
         sections.append({"category": cat, "items": processed})
 
     return sections
+def get_latest_news_mixed(categories, limit=30):
+    """
+    Devolve notícias de várias categorias misturadas e ordenadas por data.
+    """
+    all_news = []
+    for cat in categories:
+        raw_news = fetch_news_from_api(cat)
+        all_news.extend(raw_news)
+    
+    # Remover duplicados por URL
+    seen_urls = set()
+    unique_news = []
+    for art in all_news:
+        if art['url'] not in seen_urls:
+            unique_news.append(art)
+            seen_urls.add(art['url'])
+    
+    # Ordenar por data (assumindo formato ISO de NewsAPI ou "Recentemente")
+    # Nota: Ordenação simples pois a API já traz algo ordenado
+    unique_news.sort(key=lambda x: x.get('published_at', ''), reverse=True)
+    
+    return unique_news[:limit]

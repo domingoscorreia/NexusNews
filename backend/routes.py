@@ -49,8 +49,8 @@ def news_api():
     # - Categoria "Tudo": devolve feed cheio, agrupado por categorias
     if category and category.strip().lower() == 'tudo':
         categories = ['Tecnologia', 'Inteligência Artificial', 'Negócios', 'Ciência', 'Saúde', 'Entretenimento', 'Desporto']
-        sections = get_latest_news_grouped(categories, per_category=8)
-        return jsonify({"mode": "grouped", "sections": sections})
+        news = get_latest_news_mixed(categories, limit=40)
+        return jsonify({"mode": "flat", "items": news})
     elif not category:
         if current_user.preferences:
             category = current_user.preferences.split(',')[0]

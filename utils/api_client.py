@@ -42,15 +42,17 @@ def fetch_news_from_api(category=None):
     
     # Melhorar a query: se for IA, expandir para Inteligência Artificial
     q = category if category and category.lower() != 'none' else "notícias portugal"
+    
+    # Se for uma categoria específica do nosso portal, garantimos que a busca é focada
     if q.lower() == "tecnologia":
-        q = "tecnologia Portugal"
-    elif "ia" in q.lower():
-        q = f'"{q}" OR "inteligência artificial"'
-
+        q = "tecnologia"
+    elif q.lower() == "inteligência artificial":
+        q = '"inteligência artificial" OR "IA"'
+    
     params = {
         "q": q,
         "language": "pt",
-        "sortBy": "relevancy", # Relevância é melhor para buscas específicas
+        "sortBy": "relevancy",
         "apiKey": api_key
     }
 

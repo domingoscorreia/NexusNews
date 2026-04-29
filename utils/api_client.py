@@ -15,7 +15,13 @@ def fetch_news_from_api(category=None):
         'ciência': 'science',
         'saúde': 'health',
         'entretenimento': 'entertainment',
-        'desporto': 'sports'
+        'desporto': 'sports',
+        'mundo': 'world',
+        'economia': 'business',
+        'cultura': 'culture',
+        'cinema': 'movie',
+        'gaming': 'gaming',
+        'ia': 'artificial intelligence'
     }
 
     # Se tivermos uma categoria mapeada, tentamos top-headlines primeiro
@@ -69,7 +75,7 @@ def fetch_news_from_api(category=None):
 
 def format_articles(articles, category):
     formatted_news = []
-    for art in articles[:20]:
+    for art in articles[:50]:
         formatted_news.append({
             "title": art.get("title", "Sem Título"),
             "content": art.get("description") or art.get("content") or "Sem descrição disponível.",

@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const trendingContainer = document.getElementById('trending-container');
     const searchInput = document.getElementById('global-search');
     const searchBtn = document.getElementById('search-btn');
-    const categoriesNav = document.querySelector('.categories-nav');
 
     const modal = document.getElementById('news-modal');
     const modalBody = document.getElementById('modal-body');
@@ -51,16 +50,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalBody.innerHTML = `
             <div class="modal-meta">
-                <span>${art.source ?? ''}</span>
+                <span class="source-tag">${art.source ?? ''}</span>
                 <span class="dot">•</span>
                 <span>${art.published_at ?? ''}</span>
             </div>
             <h2 class="modal-title">${art.title ?? ''}</h2>
-            <img class="modal-image" src="${imageUrl}" alt="">
-            <div class="modal-text">${art.summary ?? ''}</div>
-            <div class="modal-actions">
-                <a href="${art.url ?? '#'}" target="_blank" rel="noreferrer" class="btn-primary btn-block">Ler reportagem completa</a>
-                <button type="button" class="btn-secondary btn-icon" data-action="favorite" data-article="${safeJsonEncode(art)}" aria-label="Guardar nos favoritos">★</button>
+            
+            <div class="modal-image-wrapper">
+                <img class="modal-image" src="${imageUrl}" alt="">
+            </div>
+
+            <div class="modal-content-layout">
+                <div class="ai-summary-box">
+                    <div class="ai-summary-header">
+                        <span class="sparkle-icon">✨</span>
+                        <h3>Resumo de Inteligência Artificial</h3>
+                    </div>
+                    <div class="modal-text ai-text">${art.summary || 'Resumo indisponível para esta notícia.'}</div>
+                </div>
+
+                <div class="modal-footer-actions">
+                    <a href="${art.url ?? '#'}" target="_blank" rel="noreferrer" class="btn-primary read-full">Ler notícia no site original</a>
+                    <button type="button" class="btn-secondary fav-btn" data-action="favorite" data-article="${safeJsonEncode(art)}">
+                        <span>★ Guardar</span>
+                    </button>
+                </div>
             </div>
         `;
         setModalOpen(true);
@@ -82,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPortal(payload) {
-        if (!newsContainer || !featuredContainer || !trendingContainer) return;
+        if (!newsContainer || !featuredContainer) return;
 
         const mode = payload?.mode || 'flat';
         const news = mode === 'flat' ? payload?.items : null;
@@ -91,187 +105,119 @@ document.addEventListener('DOMContentLoaded', () => {
         if ((mode === 'flat' && (!news || news.length === 0)) || (mode === 'grouped' && (!sections || sections.length === 0))) {
             newsContainer.innerHTML = '<p class="empty-state">Nenhuma notícia encontrada.</p>';
             featuredContainer.innerHTML = '';
-            trendingContainer.innerHTML = '';
             return;
         }
 
+        // Cabeçalho da Página
         if (mode === 'grouped') {
-            newsContainer.classList.remove('news-feed');
-            newsContainer.classList.add('feed-sections');
-
-            // "Tudo": secções por categoria para encher o feed
+            newsContainer.className = 'feed-sections';
             featuredContainer.innerHTML = `
                 <section class="all-header">
-                    <h1 class="all-title">Todas as categorias</h1>
-                    <p class="all-subtitle">Últimas notícias, organizadas por tema.</p>
+                    <h1 class="all-title">NexusNews Terminal</h1>
+                    <p class="all-subtitle">Fluxo de notícias em tempo real sintetizado por Nexus AI.</p>
+                </section>
+            `;
+            
+            newsContainer.innerHTML = sections.map((sec) => `
+                <section class="category-section" data-section="${sec.category}">
+                    <div class="category-section-header">
+                        <h2 class="category-section-title">${sec.category}</h2>
+                        <button class="category-section-btn" type="button" data-action="jump" data-category="${sec.category}">Ver mais</button>
+                    </div>
+                    <div class="category-grid">
+                        ${(sec.items || []).map(art => `
+                            <article class="story-card js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
+                                <div class="story-media">
+                                    <img src="${art.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9bce17b8f?auto=format&fit=crop&q=80&w=800'}" alt="">
+                                </div>
+                                <div class="story-content">
+                                    <div class="story-meta">
+                                        <span class="kicker">${art.source ?? ''}</span>
+                                        <span class="dot">•</span>
+                                        <span>${art.published_at ?? ''}</span>
+                                    </div>
+                                    <h3 class="story-title">${art.title ?? ''}</h3>
+                                </div>
+                            </article>
+                        `).join('')}
+                    </div>
+                </section>
+            `).join('');
+
+            // Secção de Grandes Destaques Globais no fundo
+            if (payload.trending && payload.trending.length > 0) {
+                newsContainer.innerHTML += `
+                    <section class="bottom-highlights-section">
+                        <div class="category-section-header">
+                            <h2 class="category-section-title">✨ Grandes Destaques Globais</h2>
+                        </div>
+                        <div class="highlights-grid">
+                            ${payload.trending.map(art => `
+                                <div class="highlight-card js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
+                                    <div class="highlight-img">
+                                        <img src="${art.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=800'}" alt="">
+                                    </div>
+                                    <div class="highlight-content">
+                                        <span class="highlight-source">${art.source}</span>
+                                        <h3 class="highlight-title">${art.title}</h3>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+        } else {
+            // Modo Individual (Single Category)
+            newsContainer.className = 'news-feed';
+            featuredContainer.innerHTML = `
+                <section class="all-header">
+                    <h1 class="all-title">Secção: ${news[0]?.category || 'Destaques'}</h1>
                 </section>
             `;
 
-            const flatForTrending = sections.flatMap((s) => s.items || []);
-            const trending = flatForTrending.slice(0, 8);
-            trendingContainer.innerHTML = trending
-                .map(
-                    (art, idx) => `
-                <div class="trend-item js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
-                    <div class="trend-rank">${String(idx + 1).padStart(2, '0')}</div>
-                    <div class="trend-body">
-                        <h4 class="trend-title">${art.title ?? ''}</h4>
-                        <p class="trend-source">${art.source ?? ''}</p>
+            newsContainer.innerHTML = news.map(art => `
+                <article class="story-card js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
+                    <div class="story-media">
+                        <img src="${art.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9bce17b8f?auto=format&fit=crop&q=80&w=800'}" alt="">
                     </div>
-                </div>
-            `
-                )
-                .join('');
-
-            newsContainer.innerHTML = sections
-                .map((sec) => {
-                    const items = (sec.items || []).slice(0, 8);
-                    return `
-                        <section class="category-section" data-section="${sec.category}">
-                            <div class="category-section-header">
-                                <h2 class="category-section-title">${sec.category}</h2>
-                                <button class="category-section-btn" type="button" data-action="jump" data-category="${sec.category}">Ver mais</button>
-                            </div>
-                            <div class="category-grid">
-                                ${items
-                                    .map(
-                                        (art) => `
-                                    <article class="story-card js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
-                                        <div class="story-media">
-                                            <img src="${art.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9bce17b8f?auto=format&fit=crop&q=80&w=800'}" alt="">
-                                        </div>
-                                        <div class="story-content">
-                                            <div class="story-meta">
-                                                <span class="kicker">${art.source ?? ''}</span>
-                                                <span class="dot">•</span>
-                                                <span>${art.published_at ?? ''}</span>
-                                            </div>
-                                            <h3 class="story-title">${art.title ?? ''}</h3>
-                                            <p class="story-excerpt">${art.summary ?? ''}</p>
-                                        </div>
-                                    </article>
-                                `
-                                    )
-                                    .join('')}
-                            </div>
-                        </section>
-                    `;
-                })
-                .join('');
-
-            return;
+                    <div class="story-content">
+                        <div class="story-meta">
+                            <span class="kicker">${art.source ?? ''}</span>
+                            <span class="dot">•</span>
+                            <span>${art.published_at ?? ''}</span>
+                        </div>
+                        <h3 class="story-title">${art.title ?? ''}</h3>
+                    </div>
+                </article>
+            `).join('');
         }
-
-        newsContainer.classList.remove('feed-sections');
-        newsContainer.classList.add('news-feed');
-
-        const heroMain = news[0];
-        const heroSideA = news[1];
-        const heroSideB = news[2];
-
-        featuredContainer.innerHTML = `
-            <section class="mag-hero">
-                <div class="mag-hero-grid">
-                    <article class="hero-main js-open-article" data-article="${safeJsonEncode(heroMain)}" role="button" tabindex="0">
-                        <div class="hero-media">
-                            <img src="${
-                                heroMain?.image_url ||
-                                'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1500'
-                            }" alt="">
-                        </div>
-                        <div class="hero-content">
-                            <div class="hero-meta">
-                                <span class="kicker">${heroMain?.source ?? ''}</span>
-                                <span class="dot">•</span>
-                                <span>${heroMain?.published_at ?? ''}</span>
-                            </div>
-                            <h1 class="hero-title">${heroMain?.title ?? ''}</h1>
-                            <p class="hero-summary">${heroMain?.summary ?? ''}</p>
-                        </div>
-                    </article>
-
-                    <div class="hero-side">
-                        ${
-                            [heroSideA, heroSideB]
-                                .filter(Boolean)
-                                .map(
-                                    (art) => `
-                            <article class="hero-mini js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
-                                <div class="hero-mini-media">
-                                    <img src="${
-                                        art?.image_url ||
-                                        'https://images.unsplash.com/photo-1585829365234-78d9bce17b8f?auto=format&fit=crop&q=80&w=800'
-                                    }" alt="">
-                                </div>
-                                <div class="hero-mini-content">
-                                    <div class="hero-mini-meta">${art?.source ?? ''} <span class="dot">•</span> ${
-                                        art?.published_at ?? ''
-                                    }</div>
-                                    <h3 class="hero-mini-title">${art?.title ?? ''}</h3>
-                                </div>
-                            </article>
-                        `
-                                )
-                                .join('')
-                        }
-                    </div>
-                </div>
-            </section>
-        `;
-
-        const feedNews = news.slice(3, 15);
-        newsContainer.innerHTML = feedNews
-            .map(
-                (art) => `
-            <article class="story-card js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
-                <div class="story-media">
-                    <img src="${art.image_url || 'https://images.unsplash.com/photo-1585829365234-78d9bce17b8f?auto=format&fit=crop&q=80&w=800'}" alt="">
-                </div>
-                <div class="story-content">
-                    <div class="story-meta">
-                        <span class="kicker">${art.source ?? ''}</span>
-                        <span class="dot">•</span>
-                        <span>${art.published_at ?? ''}</span>
-                    </div>
-                    <h2 class="story-title">${art.title ?? ''}</h2>
-                    <p class="story-excerpt">${art.summary ?? ''}</p>
-                </div>
-            </article>
-        `
-            )
-            .join('');
-
-        const trending = news.slice(15, 20);
-        trendingContainer.innerHTML = trending
-            .map(
-                (art, idx) => `
-            <div class="trend-item js-open-article" data-article="${safeJsonEncode(art)}" role="button" tabindex="0">
-                <div class="trend-rank">${String(idx + 1).padStart(2, '0')}</div>
-                <div class="trend-body">
-                    <h4 class="trend-title">${art.title ?? ''}</h4>
-                    <p class="trend-source">${art.source ?? ''}</p>
-                </div>
-            </div>
-        `
-            )
-            .join('');
     }
 
     window.fetchNews = async function fetchNews(category = '') {
-        if (!newsContainer) return;
+        const loadingOverlay = document.getElementById('loading-overlay');
+        
+        // Se não houver container de notícias, apenas removemos o overlay (caso exista) e saímos
+        if (!newsContainer) {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+            return;
+        }
 
-        newsContainer.innerHTML = '<p class="loading-state">A atualizar portal com IA…</p>';
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
         try {
-            const url =
-                category
-                    ? `/news?category=${encodeURIComponent(category)}`
-                    : '/news';
+            const url = category ? `/news?category=${encodeURIComponent(category)}` : '/news';
             const response = await fetch(url);
             const payload = await response.json();
             renderPortal(payload);
         } catch {
-            showToast('Erro ao carregar o portal.', 'error');
+            showToast('Erro ao conectar com o Nexus Engine.', 'error');
+        } finally {
+            if (loadingOverlay) {
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                }, 500);
+            }
         }
     };
 
@@ -282,13 +228,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (categoriesNav) {
-        categoriesNav.addEventListener('click', (e) => {
+    const categoriesWrapper = document.querySelector('.categories-nav-wrapper');
+    const carouselContainer = document.querySelector('.carousel-container');
+
+    if (categoriesWrapper && carouselContainer) {
+        categoriesWrapper.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action="carousel-prev"], [data-action="carousel-next"]');
             if (btn) {
                 e.preventDefault();
                 const dir = btn.getAttribute('data-action') === 'carousel-next' ? 1 : -1;
-                categoriesNav.scrollBy({ left: dir * 260, behavior: 'smooth' });
+                carouselContainer.scrollBy({ left: dir * 260, behavior: 'smooth' });
                 return;
             }
 
@@ -345,6 +294,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     if (closeModalBtn) closeModalBtn.addEventListener('click', () => setModalOpen(false));
+
+    // Mobile Menu Logic
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const navWrapper = document.getElementById('nav-wrapper');
+
+    if (mobileToggle && navWrapper) {
+        mobileToggle.addEventListener('click', () => {
+            const isActive = navWrapper.classList.toggle('is-active');
+            mobileToggle.classList.toggle('is-active');
+            document.body.style.overflow = isActive ? 'hidden' : '';
+        });
+
+        // Fechar ao clicar em links
+        navWrapper.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                navWrapper.classList.remove('is-active');
+                mobileToggle.classList.remove('is-active');
+                document.body.style.overflow = '';
+            });
+        });
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!navWrapper.contains(e.target) && !mobileToggle.contains(e.target) && navWrapper.classList.contains('is-active')) {
+                navWrapper.classList.remove('is-active');
+                mobileToggle.classList.remove('is-active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
 
     window.fetchNews();
 });

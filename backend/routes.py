@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from .news_logic import get_latest_news, get_latest_news_grouped
+from .news_logic import get_latest_news, get_latest_news_grouped, get_latest_news_mixed
 from .db_operations import update_user_preferences, save_favorite, get_user_favorites
 from .models import db, NewsArticle
 
@@ -48,18 +48,21 @@ def news_api():
     # - Sem categoria: usa a primeira preferência (se existir) para personalizar
     # - Categoria "Tudo": devolve feed cheio, agrupado por categorias
     if category and category.strip().lower() == 'tudo':
-        categories = ['Tecnologia', 'Inteligência Artificial', 'Negócios', 'Ciência', 'Saúde', 'Entretenimento', 'Desporto']
-        news = get_latest_news_mixed(categories, limit=40)
-        return jsonify({"mode": "flat", "items": news})
+        categories = ['Mundo', 'Economia', 'Tecnologia', 'IA', 'Ciência', 'Saúde', 'Gaming', 'Cultura', 'Cinema', 'Desporto']
+        sections = get_latest_news_grouped(categories, per_category=40)
+        # Obter notícias misturadas para o carrossel de destaques no fundo
+        trending = get_latest_news_mixed(categories, limit=12)
+        return jsonify({"mode": "grouped", "sections": sections, "trending": trending})
     elif not category:
-        if current_user.preferences:
-            category = current_user.preferences.split(',')[0]
-        else:
-            category = None
-        
-    news = get_latest_news(category)
-    return jsonify({"mode": "flat", "items": news})
-
+        # Padrão: Se não houver categoria, carrega o "Tudo"
+        categories = ['Mundo', 'Economia', 'Tecnologia', 'IA', 'Ciência', 'Saúde', 'Gaming', 'Cultura', 'Cinema', 'Desporto']
+        sections = get_latest_news_grouped(categories, per_category=40)
+        trending = get_latest_news_mixed(categories, limit=12)
+        return jsonify({"mode": "grouped", "sections": sections, "trending": trending})
+    else:
+        # Carregar uma categoria individual
+        news = get_latest_news(category)
+        return jsonify({"mode": "flat", "items": news})
 @main_bp.route('/favorites')
 @login_required
 def favorites():
